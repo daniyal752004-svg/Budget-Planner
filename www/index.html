@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ultimate Budget Planner</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--tx:#1b2430;--mu:#6b7785;--pr:#0f766e;--in:#15803d;--ex:#b91c1c;--sv:#1d4ed8;--bd:#e2e8f0}
+@media(prefers-color-scheme:dark){:root{--bg:#10151b;--card:#1a222c;--tx:#e8edf2;--mu:#9aa7b5;--pr:#2dd4bf;--in:#4ade80;--ex:#f87171;--sv:#60a5fa;--bd:#2a3542}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:env(safe-area-inset-top) 0 calc(62px + env(safe-area-inset-bottom))}
+h1{font-size:19px;margin:0;padding:14px 16px}.c{background:var(--card);border:1px solid var(--bd);border-radius:12px;margin:10px 12px;padding:14px}
+.c h2{font-size:13px;margin:0 0 8px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+.r{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:15px}.r:last-child{border:0}
+.in{color:var(--in)}.ex{color:var(--ex)}.sv{color:var(--sv)}.b{font-weight:700}small{color:var(--mu)}
+input,select,textarea,button{font:inherit;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+textarea{min-height:110px}button{background:var(--pr);color:#fff;border:0;font-weight:700}button.s{width:auto;padding:4px 10px;background:none;color:var(--ex);border:1px solid var(--bd);margin:0}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav div{flex:1;text-align:center;padding:12px 0;font-size:11px;color:var(--mu)}nav .a{color:var(--pr);font-weight:700}
+.t{overflow-x:auto}table{border-collapse:collapse;font-size:12px;white-space:nowrap}td,th{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:right}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+.bar{height:9px;background:var(--bd);border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--pr)}.g{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+</style></head><body>
+<h1 id="hd">💰 Budget Planner</h1><div id="app"></div><nav id="nav"></nav>
+<script>
+const CATS=["Income","Expense","Savings","New Debt","Debt Paid","Savings Consumed"];
+const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DEF={set:{name:"Daniyal Ahmed",start:"2026-06-01",cash:0,debt0:0,thr:0,goal:0},
+L:{"Income":["Primary Salary / Wages","Freelance / Side Income","Investment Income / Dividends","Other Income"],
+"Expense":["Housing / Rent / Mortgage","Utilities (Electric, Gas, Water)","Groceries & Household Essentials","Transportation & Fuel","Insurance & Healthcare","Subscriptions & Streaming","Dining Out & Entertainment","Personal Care & Shopping","Miscellaneous / Buffer"],
+"Savings":["Emergency Savings Fund","Vacation / Travel Fund","Investments & Retirement"],
+"New Debt":["Personal Loan Taken","Credit Card Debt Incurred","Bank Mortgage / Loan","Other New Loan"],
+"Debt Paid":["Credit Card Repayment","Student Loan Payment","Car Loan Payment","Personal Loan Payoff"],
+"Savings Consumed":["Emergency Withdrawal","Travel / Vacation Spent","Investment Withdrawal","Other Savings Used"]},
+tx:[["2026-06-05","Monthly Salary","Income","Primary Salary / Wages",3500,"Bank","Regular"],["2026-06-10","Apartment Rent","Expense","Housing / Rent / Mortgage",1200,"Bank","Fixed"],["2026-06-12","Electricity & Water","Expense","Utilities (Electric, Gas, Water)",220,"Bank","Variable"],["2026-06-15","Grocery Store","Expense","Groceries & Household Essentials",450,"Cash","Variable"],["2026-06-20","Emergency Deposit","Savings","Emergency Savings Fund",300,"Bank","Savings Added"],["2026-06-22","Credit Card Payment","Debt Paid","Credit Card Repayment",2500,"Bank","Debt Repayment"],["2026-06-25","Car Repair Withdrawal","Savings Consumed","Emergency Withdrawal",100,"Cash","Withdrawal"],["2026-07-05","Monthly Salary","Income","Primary Salary / Wages",3500,"Bank","Regular"],["2026-07-10","Apartment Rent","Expense","Housing / Rent / Mortgage",1200,"Bank","Fixed"],["2026-07-15","New Appliance Loan","New Debt","Personal Loan Taken",25000,"Bank","New Debt"],["2026-07-20","Student Loan Payment","Debt Paid","Student Loan Payment",3000,"Bank","Debt Repayment"]].map((a,i)=>({id:i+1,date:a[0],desc:a[1],cat:a[2],sub:a[3],amt:a[4],src:a[5],note:a[6]})),
+sg:[{n:"Emergency Savings Fund",t:10000,s:2000},{n:"Vacation / Travel Fund",t:5000,s:500},{n:"Investments & Retirement",t:15000,s:1000}],
+dg:[{n:"Credit Card Repayment",i:5000,d:"2027-01-01"},{n:"Student Loan Payment",i:30000,d:"2028-06-01"},{n:"Car Loan Payment",i:12000,d:"2027-12-01"}],tab:"add",mi:0,next:100};
+let S;try{S=JSON.parse(localStorage.getItem("ub"))}catch(e){}S=S||JSON.parse(JSON.stringify(DEF));
+const save=()=>{try{localStorage.setItem("ub",JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id),f=n=>Number(n||0).toLocaleString(undefined,{maximumFractionDigits:2});
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const opts=(a,sel)=>a.map(x=>`<option ${x==sel?"selected":""}>${esc(x)}</option>`).join("");
+const row=(l,v,c)=>`<div class="r"><span>${esc(l)}</span><span class="${c||""}">${f(v)}</span></div>`;
+function mIdx(d){const p=d.split("-"),s=S.set.start.split("-");return(+p[0]-+s[0])*12+(+p[1]-+s[1])}
+function mName(i){const s=S.set.start.split("-"),m=(+s[1]-1+i),y=+s[0]+Math.floor(m/12);return MN[((m%12)+12)%12]+" "+y}
+const sum=(i,cat,sub)=>S.tx.reduce((a,t)=>a+(t.cat==cat&&(sub==null||t.sub==sub)&&mIdx(t.date)==i?+t.amt:0),0);
+function months(){const out=[];let prev=+S.set.debt0;for(let i=0;i<12;i++){const o={};
+ CATS.forEach(c=>{o[c]=sum(i,c);o[c+"_s"]=S.L[c].map(n=>[n,sum(i,c,n)])});
+ o.net=o["Savings"]-o["Savings Consumed"];o.prev=prev;o.out=prev+o["New Debt"];o.rem=Math.max(0,o.out-o["Debt Paid"]);o.above=Math.max(0,o.rem-S.set.thr);o.cash=o.Income-o.Expense;prev=o.rem;out.push(o)}return out}
+function tabs(){const T=[["add","➕ Add"],["log","📋 Log"],["month","📅 Month"],["year","📊 Year"],["goals","🎯 Goals"],["set","⚙️ Setup"]];
+ $("nav").innerHTML=T.map(t=>`<div class="${S.tab==t[0]?"a":""}" onclick="S.tab='${t[0]}';save();show()">${t[1]}</div>`).join("");
+ $("hd").textContent="💰 "+(S.set.name?S.set.name+"'s Budget":"Budget Planner")}
+function subOpts(){$("sb").innerHTML=opts(S.L[$("ct").value])}
+function add(){const a=parseFloat($("am").value);if(!a||a<=0||!$("da").value){alert("Enter a date and an amount");return}
+ S.tx.push({id:S.next++,date:$("da").value,desc:$("de").value||$("sb").value,cat:$("ct").value,sub:$("sb").value,amt:a,src:$("so").value,note:$("no").value});
+ save();$("am").value="";$("de").value="";$("no").value="";alert("Saved ✔")}
+function del(id){if(confirm("Delete this entry?")){S.tx=S.tx.filter(t=>t.id!=id);save();show()}}
+function setv(k,v,num){S.set[k]=num?+v:v;save();tabs();if(k=="start"||k=="thr"||k=="goal")show()}
+function setList(c,v){S.L[c]=v.split("\n").map(x=>x.trim()).filter(Boolean);save()}
+function gset(a,i,k,v,num){S[a][i][k]=num?+v:v;save();show()}
+function gadd(a){S[a].push(a=="sg"?{n:S.L.Savings[0]||"",t:0,s:0}:{n:S.L["Debt Paid"][0]||"",i:0,d:""});save();show()}
+function gdel(a,i){S[a].splice(i,1);save();show()}
+function backup(){$("bk").value=JSON.stringify(S);$("bk").select();try{navigator.clipboard.writeText($("bk").value)}catch(e){}}
+function restore(){try{const d=JSON.parse($("bk").value);if(!d.tx||!d.L)throw 0;S=d;save();show();alert("Restored ✔")}catch(e){alert("That backup text is not valid")}}
+const cls=c=>c=="Income"?"in":c=="Expense"?"ex":"sv";
+function show(){tabs();const A=$("app"),M=months(),A0=S.set;
+if(S.tab=="add"){A.innerHTML=`<div class="c"><h2>New entry</h2><input type="date" id="da" value="${new Date().toISOString().slice(0,10)}"><select id="ct" onchange="subOpts()">${opts(CATS)}</select><select id="sb"></select><input id="de" placeholder="Description"><input id="am" type="number" inputmode="decimal" placeholder="Amount"><select id="so"><option>Bank</option><option>Cash</option></select><input id="no" placeholder="Note / type details (optional)"><button onclick="add()">Save entry</button></div>`;subOpts()}
+else if(S.tab=="log"){const L=[...S.tx].sort((a,b)=>b.date.localeCompare(a.date));
+A.innerHTML=`<div class="c"><h2>All transactions (${L.length})</h2>`+(L.map(t=>`<div class="r"><span>${t.date}<br><b>${esc(t.desc)}</b><br><small>${esc(t.cat)} › ${esc(t.sub)} · ${t.src}${t.note?" · "+esc(t.note):""}</small></span><span style="text-align:right"><span class="${cls(t.cat)}">${f(t.amt)}</span><br><button class="s" onclick="del(${t.id})">Delete</button></span></div>`).join("")||"No entries yet")+"</div>"}
+else if(S.tab=="month"){const o=M[S.mi],blk=(c,t,k)=>`<div class="c"><h2>${t}</h2>${o[c+"_s"].map(x=>row(x[0],x[1])).join("")}${row("TOTAL",o[c],k+" b")}</div>`;
+A.innerHTML=`<div class="c"><select onchange="S.mi=+this.value;save();show()">${M.map((_,i)=>`<option value="${i}" ${i==S.mi?"selected":""}>${mName(i)}</option>`).join("")}</select></div>`+blk("Income","Income","in")+blk("Expense","Expenses","ex")+blk("Savings","Savings added","sv")+`<div class="c"><h2>Savings & cash</h2>${row("Savings consumed",o["Savings Consumed"])}${row("NET SAVINGS ADDED",o.net,"sv b")}${row("Income − Expenses",o.cash,"b")}</div><div class="c"><h2>Debt</h2>${row("Previous remaining debt",o.prev)}${row("New debt this month",o["New Debt"],"ex")}${row("Total outstanding",o.out)}${row("Debt payments made",o["Debt Paid"],"in")}${row("REMAINING DEBT",o.rem,"ex b")}${row("Above max limit",o.above,"ex")}</div>`}
+else if(S.tab=="year"){const T=k=>M.reduce((a,m)=>a+m[k],0),ln=(l,fn,tot)=>`<tr><td>${l}</td>${M.map(m=>`<td>${f(fn(m))}</td>`).join("")}<td><b>${f(tot)}</b></td></tr>`,ns=T("net"),pct=A0.goal?Math.min(100,Math.max(0,ns/A0.goal*100)):0,inc=T("Income"),rem=M[11].rem;
+A.innerHTML=`<div class="c"><h2>Annual progress</h2>${row("Net savings added",ns,"sv")}<div class="bar"><i style="width:${pct}%"></i></div><small>${pct.toFixed(0)}% of savings goal (${f(A0.goal)})</small>${row("Remaining debt (end of year)",rem,"ex")}${row("Max debt limit",A0.thr)}${row("Net cash flow (income − expenses)",inc-T("Expense"),"b")}${row("Savings rate",inc?ns/inc*100:0)}</div><div class="c"><h2>Annual summary</h2><div class="t"><table><tr><th></th>${M.map((_,i)=>`<th>${mName(i).slice(0,3)}</th>`).join("")}<th>Total</th></tr>${ln("TOTAL INCOME",m=>m.Income,inc)}${ln("TOTAL EXPENSES",m=>m.Expense,T("Expense"))}${ln("NET SAVINGS ADDED",m=>m.net,ns)}${ln("NEW DEBT",m=>m["New Debt"],T("New Debt"))}${ln("DEBT PAYMENTS",m=>m["Debt Paid"],T("Debt Paid"))}${ln("REMAINING DEBT",m=>m.rem,rem)}</table></div></div>`}
+else if(S.tab=="goals"){const all=(c,n)=>S.tx.reduce((a,t)=>a+(t.cat==c&&t.sub==n?+t.amt:0),0);
+A.innerHTML=`<div class="c"><h2>Savings goals</h2>`+S.sg.map((g,i)=>{const cur=+g.s+all("Savings",g.n),p=g.t?Math.min(100,cur/g.t*100):0;return `<div style="border-bottom:1px solid var(--bd);padding:6px 0"><select onchange="gset('sg',${i},'n',this.value)">${opts(S.L.Savings,g.n)}</select><div class="g"><div><small>Target</small><input type="number" value="${g.t}" onchange="gset('sg',${i},'t',this.value,1)"></div><div><small>Starting balance</small><input type="number" value="${g.s}" onchange="gset('sg',${i},'s',this.value,1)"></div></div>${row("Saved so far",cur,"sv")}${row("Left to save",Math.max(0,g.t-cur))}<div class="bar"><i style="width:${p}%"></i></div><small>${p.toFixed(0)}% · ${cur>=g.t?"Achieved":"In progress"}</small> <button class="s" onclick="gdel('sg',${i})">Remove</button></div>`}).join("")+`<button onclick="gadd('sg')">+ Add savings goal</button></div><div class="c"><h2>Debt payoff goals</h2>`+S.dg.map((g,i)=>{const pd=all("Debt Paid",g.n),rm=Math.max(0,g.i-pd),p=g.i?Math.min(100,pd/g.i*100):0;return `<div style="border-bottom:1px solid var(--bd);padding:6px 0"><select onchange="gset('dg',${i},'n',this.value)">${opts(S.L["Debt Paid"],g.n)}</select><div class="g"><div><small>Initial debt</small><input type="number" value="${g.i}" onchange="gset('dg',${i},'i',this.value,1)"></div><div><small>Target payoff date</small><input type="date" value="${g.d}" onchange="gset('dg',${i},'d',this.value)"></div></div>${row("Paid to date",pd,"in")}${row("Remaining balance",rm,"ex")}<div class="bar"><i style="width:${p}%"></i></div><small>${p.toFixed(0)}% · ${rm<=0?"Paid off":"Active"}</small> <button class="s" onclick="gdel('dg',${i})">Remove</button></div>`}).join("")+`<button onclick="gadd('dg')">+ Add debt goal</button></div>`}
+else{A.innerHTML=`<div class="c"><h2>Control panel</h2><small>Your name</small><input value="${esc(A0.name)}" onchange="setv('name',this.value)"><small>Budget start date</small><input type="date" value="${A0.start}" onchange="setv('start',this.value)"><small>Opening cash balance</small><input type="number" value="${A0.cash}" onchange="setv('cash',this.value,1)"><small>Initial / existing debt</small><input type="number" value="${A0.debt0}" onchange="setv('debt0',this.value,1);show()"><small>Max debt limit</small><input type="number" value="${A0.thr}" onchange="setv('thr',this.value,1)"><small>Target savings goal (year)</small><input type="number" value="${A0.goal}" onchange="setv('goal',this.value,1)"></div><div class="c"><h2>Category lists (one per line)</h2>${CATS.map(c=>`<small>${c}</small><textarea onchange="setList('${c}',this.value)">${esc(S.L[c].join("\n"))}</textarea>`).join("")}</div><div class="c"><h2>Backup</h2><small>Tap Backup, then paste the copied text somewhere safe (e.g. Notes). To restore, paste it in the box and tap Restore.</small><textarea id="bk"></textarea><button onclick="backup()">Backup (copy)</button><button onclick="restore()">Restore from pasted text</button></div>`}}
+show();
+</script></body></html>
